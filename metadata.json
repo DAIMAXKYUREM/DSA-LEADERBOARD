@@ -1,0 +1,6 @@
+{
+  "name": "CP Master Leaderboard",
+  "description": "Combine and track solved problems across Codeforces, LeetCode, and CodeChef on a global leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

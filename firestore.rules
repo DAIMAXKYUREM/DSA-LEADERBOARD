@@ -1,0 +1,135 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'totalSolved', 'createdAt', 'updatedAt']) 
+        && data.uid is string 
+        && data.uid == request.auth.uid
+        && data.totalSolved is number
+        && data.totalSolved >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDailyStat(data) {
+      return data.keys().hasAll(['uid', 'date', 'solvedToday', 'totalSolved', 'updatedAt'])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.date is string
+        && data.solvedToday is number
+        && data.solvedToday >= 0
+        && data.totalSolved is number
+        && data.totalSolved >= 0
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTask(data) {
+      let isBasicValid = data.keys().hasAll(['uid', 'title', 'type', 'targetDays', 'startDate', 'endDate', 'startState', 'status', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.title is string
+        && data.title.size() <= 200
+        && data.type is string
+        && data.targetDays is number
+        && data.startDate is string
+        && data.startDate.size() <= 50
+        && data.endDate is string
+        && data.endDate.size() <= 50
+        && data.startState is map
+        && data.status is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+        
+      let hasTargetTotal = !data.keys().hasAny(['targetTotal']) || data.targetTotal is number;
+      let hasTargetPlatforms = !data.keys().hasAny(['targetPlatforms']) || data.targetPlatforms is map;
+      
+      return isBasicValid && hasTargetTotal && hasTargetPlatforms;
+    }
+
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if true; // Leaderboard needs public list. For security, maybe constrain but leaderboard is public.
+
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner(userId)
+        && isValidId(userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'handles', 'tokens', 'stats', 'details', 'totalSolved', 'history', 'lastSyncedAt', 'updatedAt'])
+        );
+    }
+
+    match /daily_stats/{statId} {
+      allow get: if true;
+      allow list: if true; 
+
+      allow create: if isOwner(incoming().uid)
+        && isValidId(statId)
+        && isValidDailyStat(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner(existing().uid)
+        && isValidId(statId)
+        && incoming().uid == existing().uid
+        && incoming().date == existing().date
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'solvedToday', 'totalSolved', 'updatedAt'])
+        );
+    }
+
+    match /tasks/{taskId} {
+      allow get: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid; 
+
+      allow create: if isSignedIn() && incoming().uid == request.auth.uid
+        && isValidId(taskId)
+        && isValidTask(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() && existing().uid == request.auth.uid
+        && isValidId(taskId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+        
+      allow delete: if isSignedIn() && existing().uid == request.auth.uid;
+    }
+  }
+}

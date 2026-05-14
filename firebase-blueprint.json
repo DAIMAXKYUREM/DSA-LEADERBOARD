@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with platform handles and stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "handles": {
+          "type": "object",
+          "properties": {
+            "leetcode": { "type": "string" },
+            "codeforces": { "type": "string" },
+            "codechef": { "type": "string" },
+            "cses": { "type": "string" }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "leetcode": { "type": "number" },
+            "codeforces": { "type": "number" },
+            "codechef": { "type": "number" },
+            "cses": { "type": "number" }
+          }
+        },
+        "details": {
+          "type": "object"
+        },
+        "history": {
+          "type": "object",
+          "description": "Map of YYYY-MM-DD to totalSolved on that day"
+        },
+        "totalSolved": { "type": "number" },
+        "lastSyncedAt": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["uid", "totalSolved", "createdAt", "updatedAt"]
+    },
+    "DailyStat": {
+      "title": "DailyStat",
+      "description": "Daily solved problems per user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "date": { "type": "string" },
+        "solvedToday": { "type": "number" },
+        "totalSolved": { "type": "number" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["uid", "date", "solvedToday", "totalSolved", "updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "User problem solving goal/task",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["overall", "platform"] },
+        "targetDays": { "type": "number" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "targetTotal": { "type": "number" },
+        "targetPlatforms": {
+          "type": "object",
+          "properties": {
+            "leetcode": { "type": "number" },
+            "codeforces": { "type": "number" },
+            "codechef": { "type": "number" },
+            "cses": { "type": "number" }
+          }
+        },
+        "startState": {
+          "type": "object",
+          "properties": {
+            "totalSolved": { "type": "number" },
+            "leetcode": { "type": "number" },
+            "codeforces": { "type": "number" },
+            "codechef": { "type": "number" },
+            "cses": { "type": "number" }
+          }
+        },
+        "status": { "type": "string", "enum": ["active", "completed", "expired"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["uid", "title", "type", "targetDays", "startDate", "endDate", "startState", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles"
+    },
+    "/daily_stats/{statId}": {
+      "schema": { "$ref": "#/entities/DailyStat" },
+      "description": "Daily sync stats for leaderboard"
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User goals and tasks"
+    }
+  }
+}
